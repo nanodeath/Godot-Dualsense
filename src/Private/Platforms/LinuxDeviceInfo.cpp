@@ -32,13 +32,25 @@ void FLinuxDeviceInfo::Read(FDeviceContext* Context)
 		return;
 	}
 
+	// Drain the kernel's hidraw queue: the controller emits ~250 Hz but the
+	// game ticks at 60–120 Hz, so multiple reports accumulate per frame. Only
+	// the most recent report is interesting; older queued reports introduce
+	// growing input latency. hid_read in nonblocking mode returns 0 once the
+	// queue is empty, the bytes-read count on success, and -1 on error.
 	if (Context->ConnectionType == EDSDeviceConnection::Bluetooth && Context->DeviceType == EDSDeviceType::DualShock4)
 	{
 		const size_t InputReportLength = SonyHIDProtocol::DUALSHOCK4_BLUETOOTH_INPUT_LEN;
-		if (hid_read(DeviceHandle, Context->BufferDS4, InputReportLength) < 0)
+		int Bytes;
+		do
 		{
-			InvalidateHandle(Context);
+			Bytes = hid_read(DeviceHandle, Context->BufferDS4, InputReportLength);
+			if (Bytes < 0)
+			{
+				InvalidateHandle(Context);
+				return;
+			}
 		}
+		while (Bytes > 0);
 		return;
 	}
 
@@ -51,10 +63,17 @@ void FLinuxDeviceInfo::Read(FDeviceContext* Context)
 		return;
 	}
 
-	if (hid_read(DeviceHandle, Context->Buffer, InputReportLength) < 0)
+	int Bytes;
+	do
 	{
-		InvalidateHandle(Context);
+		Bytes = hid_read(DeviceHandle, Context->Buffer, InputReportLength);
+		if (Bytes < 0)
+		{
+			InvalidateHandle(Context);
+			return;
+		}
 	}
+	while (Bytes > 0);
 }
 
 void FLinuxDeviceInfo::ProcessAudioHapitc(FDeviceContext* Context)

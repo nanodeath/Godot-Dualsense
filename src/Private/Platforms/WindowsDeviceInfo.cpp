@@ -3,6 +3,7 @@
 // Planned Release Year: 2025
 
 #include "Platforms/Windows/WindowsDeviceInfo.h"
+#include "Platforms/SonyHIDProtocol.h"
 #include "GCore/Types/DSCoreTypes.h"
 #include "GCore/Types/Structs/Config/GamepadCalibration.h"
 #include "GCore/Types/Structs/Context/DeviceContext.h"
@@ -56,11 +57,11 @@ void FWindowsDeviceInfo::Detect(std::vector<FDeviceContext>& Devices)
 				if (HidD_GetAttributes(TempDeviceHandle, &Attributes))
 				{
 					if (
-					    Attributes.VendorID == 0x054C &&
-					    (Attributes.ProductID == 0x0CE6 ||
-					     Attributes.ProductID == 0x0DF2 ||
-					     Attributes.ProductID == 0x05C4 ||
-					     Attributes.ProductID == 0x09CC))
+					    Attributes.VendorID == SonyHIDProtocol::SONY_VENDOR_ID &&
+					    (Attributes.ProductID == SonyHIDProtocol::DUALSENSE_PID ||
+					     Attributes.ProductID == SonyHIDProtocol::DUALSENSE_EDGE_PID ||
+					     Attributes.ProductID == SonyHIDProtocol::DUALSHOCK4_V1_PID ||
+					     Attributes.ProductID == SonyHIDProtocol::DUALSHOCK4_V2_PID))
 					{
 						FDeviceContext Context = {};
 						wchar_t DeviceProductString[260];
@@ -73,11 +74,11 @@ void FWindowsDeviceInfo::Detect(std::vector<FDeviceContext>& Devices)
 								DevicePaths[DeviceIndex] = FinalString;
 								switch (Attributes.ProductID)
 								{
-									case 0x05C4:
-									case 0x09CC:
+									case SonyHIDProtocol::DUALSHOCK4_V1_PID:
+									case SonyHIDProtocol::DUALSHOCK4_V2_PID:
 										Context.DeviceType = EDSDeviceType::DualShock4;
 										break;
-									case 0x0DF2:
+									case SonyHIDProtocol::DUALSENSE_EDGE_PID:
 										Context.DeviceType = EDSDeviceType::DualSenseEdge;
 										break;
 									default: Context.DeviceType = EDSDeviceType::DualSense;
@@ -125,12 +126,14 @@ void FWindowsDeviceInfo::Read(FDeviceContext* Context)
 	DWORD BytesRead = 0;
 	if (Context->ConnectionType == EDSDeviceConnection::Bluetooth && Context->DeviceType == EDSDeviceType::DualShock4)
 	{
-		constexpr size_t InputReportLength = 547;
+		constexpr size_t InputReportLength = SonyHIDProtocol::DUALSHOCK4_BLUETOOTH_INPUT_LEN;
 		PollTick(Context->Handle, Context->BufferDS4, InputReportLength, BytesRead);
 	}
 	else
 	{
-		const size_t InputBufferSize = Context->ConnectionType == EDSDeviceConnection::Bluetooth ? 78 : 64;
+		const size_t InputBufferSize = Context->ConnectionType == EDSDeviceConnection::Bluetooth
+		                                   ? SonyHIDProtocol::BLUETOOTH_INPUT_LEN
+		                                   : SonyHIDProtocol::DUALSENSE_USB_INPUT_LEN;
 		PollTick(Context->Handle, Context->Buffer, InputBufferSize, BytesRead);
 	}
 }
@@ -142,8 +145,12 @@ void FWindowsDeviceInfo::Write(FDeviceContext* Context)
 		return;
 	}
 
-	size_t InReportLength = Context->DeviceType == EDSDeviceType::DualShock4 ? 32 : 74;
-	size_t OutputReportLength = Context->ConnectionType == EDSDeviceConnection::Bluetooth ? 78 : InReportLength;
+	size_t InReportLength = Context->DeviceType == EDSDeviceType::DualShock4
+	                            ? SonyHIDProtocol::DUALSHOCK4_USB_OUTPUT_LEN
+	                            : SonyHIDProtocol::DUALSENSE_USB_OUTPUT_LEN;
+	size_t OutputReportLength = Context->ConnectionType == EDSDeviceConnection::Bluetooth
+	                                ? SonyHIDProtocol::BLUETOOTH_OUTPUT_LEN
+	                                : InReportLength;
 
 	DWORD BytesWritten = 0;
 	if (!WriteFile(Context->Handle, Context->BufferOutput, OutputReportLength, &BytesWritten, nullptr))
@@ -249,7 +256,7 @@ void FWindowsDeviceInfo::ProcessAudioHapitc(FDeviceContext* Context)
 	}
 
 	unsigned long BytesWritten = 0;
-	constexpr size_t BufferSize = 142;
+	constexpr size_t BufferSize = SonyHIDProtocol::AUDIO_HAPTICS_OUTPUT_LEN;
 	if (!WriteFile(Context->Handle, Context->BufferAudio, BufferSize, &BytesWritten, nullptr))
 	{
 		const unsigned long Error = GetLastError();
@@ -261,11 +268,11 @@ void FWindowsDeviceInfo::ProcessAudioHapitc(FDeviceContext* Context)
 
 void FWindowsDeviceInfo::ConfigureFeatures(FDeviceContext* Context)
 {
-	unsigned char FeatureBuffer[41] = {0};
+	unsigned char FeatureBuffer[SonyHIDProtocol::CALIBRATION_FEATURE_LEN] = {0};
 	std::memset(FeatureBuffer, 0, sizeof(FeatureBuffer));
 
-	FeatureBuffer[0] = 0x05;
-	if (!HidD_GetFeature(Context->Handle, FeatureBuffer, 41))
+	FeatureBuffer[0] = SonyHIDProtocol::CALIBRATION_FEATURE_ID;
+	if (!HidD_GetFeature(Context->Handle, FeatureBuffer, SonyHIDProtocol::CALIBRATION_FEATURE_LEN))
 	{
 		const unsigned long Error = GetLastError();
 		return;

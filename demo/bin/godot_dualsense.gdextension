@@ -7,3 +7,5 @@ compatibility_minimum = "4.1"
 
 windows.debug.x86_64 = "res://bin/windows/godot_dualsense.dll"
 windows.release.x86_64 = "res://bin/windows/godot_dualsense.dll"
+linux.debug.x86_64 = "res://bin/linux/libgodot_dualsense.so"
+linux.release.x86_64 = "res://bin/linux/libgodot_dualsense.so"

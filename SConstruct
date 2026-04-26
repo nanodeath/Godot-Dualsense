@@ -28,17 +28,24 @@ if env["platform"] == "windows":
     env.Append(CPPDEFINES=["UNICODE", "_UNICODE"])
     env.Append(LIBS=["setupapi", "hid"])
 
-elif env["platform"] == "linuxbsd":
+elif env["platform"] == "linux":
     env.Append(CXXFLAGS=["-std=c++20"])
+    env.ParseConfig("pkg-config --cflags --libs hidapi-hidraw")
 
 # --- Busca Recursiva de Fontes ---
 sources = []
 for root, dirs, files in os.walk("src"):
+    # Skip the GamepadCore Examples/ directory entirely — it's reference code,
+    # not part of the build. Platform-specific code lives in src/{Public,Private}/Platforms/.
+    if "Examples" in root.split(os.sep):
+        continue
     for file in files:
         if file.endswith(".cpp"):
             file_path = os.path.join(root, file)
-            # Filtro de plataforma simples
+            # Per-platform source filter
             if env["platform"] == "windows" and ("Linux" in file_path or "Mac" in file_path or "Android" in file_path):
+                continue
+            if env["platform"] == "linux" and ("Windows" in file_path or "Mac" in file_path or "Android" in file_path):
                 continue
             sources.append(file_path)
 

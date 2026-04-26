@@ -43,5 +43,10 @@ namespace FWindowsPlatform
 		{
 			FWindowsDeviceInfo::ProcessAudioHapitc(Context);
 		}
+
+		void InitializeAudioDevice(FDeviceContext* Context)
+		{
+			FWindowsDeviceInfo::InitializeAudioDevice(Context);
+		}
 	};
 }

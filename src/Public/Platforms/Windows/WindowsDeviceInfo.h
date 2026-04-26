@@ -49,6 +49,15 @@ public:
 	virtual ~FWindowsDeviceInfo() = default;
 	static void ProcessAudioHapitc(FDeviceContext* Context);
 	/**
+	 * @brief Initializes any platform-side state needed for audio output to the
+	 * controller. Required by the IsHardwarePolicy concept introduced in tip
+	 * GamepadCore. The Windows backend does not currently use audio haptics,
+	 * so this is a no-op stub satisfying the contract.
+	 *
+	 * @param Context Pointer to the device context.
+	 */
+	static void InitializeAudioDevice(FDeviceContext* Context);
+	/**
 	 * @brief Configures Bluetooth-specific features for a given HID device.
 	 *
 	 * This method is used to initialize and set up Bluetooth-related features on a HID device.

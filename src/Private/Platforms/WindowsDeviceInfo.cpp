@@ -146,7 +146,7 @@ void FWindowsDeviceInfo::Write(FDeviceContext* Context)
 	size_t OutputReportLength = Context->ConnectionType == EDSDeviceConnection::Bluetooth ? 78 : InReportLength;
 
 	DWORD BytesWritten = 0;
-	if (!WriteFile(Context->Handle, Context->BufferOutput, OutputReportLength, &BytesWritten, nullptr))
+	if (!WriteFile(Context->Handle, Context->GetRawOutputBuffer(), OutputReportLength, &BytesWritten, nullptr))
 	{
 	}
 }
@@ -184,7 +184,7 @@ void FWindowsDeviceInfo::InvalidateHandle(FDeviceContext* Context)
 		Context->IsConnected = false;
 		Context->Path.clear();
 
-		ZeroMemory(Context->BufferOutput, sizeof(Context->BufferOutput));
+		ZeroMemory(Context->GetRawOutputBuffer(), 78);
 		ZeroMemory(Context->BufferAudio, sizeof(Context->BufferAudio));
 		ZeroMemory(Context->Buffer, sizeof(Context->Buffer));
 		ZeroMemory(Context->BufferDS4, sizeof(Context->BufferDS4));
@@ -257,6 +257,15 @@ void FWindowsDeviceInfo::ProcessAudioHapitc(FDeviceContext* Context)
 		{
 		}
 	}
+}
+
+void FWindowsDeviceInfo::InitializeAudioDevice(FDeviceContext* /*Context*/)
+{
+	// No-op: required by GamepadCore tip's IsHardwarePolicy concept
+	// (audio-device init hook on the platform policy). The Windows backend
+	// has not started using GamepadCore's audio-haptic path; this stub
+	// satisfies the contract so the wrapper compiles against tip without
+	// changing existing behavior.
 }
 
 void FWindowsDeviceInfo::ConfigureFeatures(FDeviceContext* Context)

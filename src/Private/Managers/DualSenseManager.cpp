@@ -56,6 +56,11 @@ void DualSenseManager::_bind_methods() {
     ClassDB::bind_method(D_METHOD("set_trigger_off", "hand", "device_id"), &DualSenseManager::set_trigger_off, DEFVAL(1));
     ClassDB::bind_method(D_METHOD("set_trigger_resistance", "hand", "start_zone", "strength", "device_id"), &DualSenseManager::set_trigger_resistance, DEFVAL(1));
     ClassDB::bind_method(D_METHOD("set_trigger_weapon", "hand", "start_zone", "amplitude", "behavior", "trigger", "device_id"), &DualSenseManager::set_trigger_weapon, DEFVAL(1));
+    ClassDB::bind_method(D_METHOD("get_gyro", "device_id"), &DualSenseManager::get_gyro, DEFVAL(1));
+    ClassDB::bind_method(D_METHOD("get_accel", "device_id"), &DualSenseManager::get_accel, DEFVAL(1));
+    ClassDB::bind_method(D_METHOD("get_orientation", "device_id"), &DualSenseManager::get_orientation, DEFVAL(1));
+    ClassDB::bind_method(D_METHOD("enable_motion_sensor", "enabled", "device_id"), &DualSenseManager::enable_motion_sensor, DEFVAL(1));
+    ClassDB::bind_method(D_METHOD("reset_gyro_orientation", "device_id"), &DualSenseManager::reset_gyro_orientation, DEFVAL(1));
 }
 
 static std::uint8_t clamp_byte(int v) {
@@ -101,6 +106,42 @@ void DualSenseManager::set_trigger_resistance(int hand, int start_zone, int stre
 void DualSenseManager::set_trigger_weapon(int hand, int start_zone, int amplitude, int behavior, int trigger, int device_id) {
     if (const auto gamepad = FGodotDeviceRegistry::GetTriggerGamepad(device_id)) {
         gamepad->SetWeapon25(clamp_byte(start_zone), clamp_byte(amplitude), clamp_byte(behavior), clamp_byte(trigger), to_hand(hand));
+    }
+}
+
+Vector3 DualSenseManager::get_gyro(int device_id) {
+    if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
+        const auto v = gamepad->GetGyro();
+        return Vector3(v.X, v.Y, v.Z);
+    }
+    return Vector3();
+}
+
+Vector3 DualSenseManager::get_accel(int device_id) {
+    if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
+        const auto v = gamepad->GetAccel();
+        return Vector3(v.X, v.Y, v.Z);
+    }
+    return Vector3();
+}
+
+Quaternion DualSenseManager::get_orientation(int device_id) {
+    if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
+        const auto q = gamepad->GetOrientation();
+        return Quaternion(q.X, q.Y, q.Z, q.W);
+    }
+    return Quaternion();
+}
+
+void DualSenseManager::enable_motion_sensor(bool enabled, int device_id) {
+    if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
+        gamepad->EnableMotionSensor(enabled);
+    }
+}
+
+void DualSenseManager::reset_gyro_orientation(int device_id) {
+    if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
+        gamepad->ResetGyroOrientation();
     }
 }
 

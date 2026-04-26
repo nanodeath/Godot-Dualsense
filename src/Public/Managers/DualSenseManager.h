@@ -2,6 +2,8 @@
 
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/quaternion.hpp>
+#include <godot_cpp/variant/vector3.hpp>
 using namespace godot;
 
 namespace godot {
@@ -29,6 +31,13 @@ namespace godot {
 		void set_trigger_off(int hand, int device_id);
 		void set_trigger_resistance(int hand, int start_zone, int strength, int device_id);
 		void set_trigger_weapon(int hand, int start_zone, int amplitude, int behavior, int trigger, int device_id);
+
+		// Motion API. Axes are controller-local; consumer applies game-specific remap.
+		Vector3 get_gyro(int device_id);
+		Vector3 get_accel(int device_id);
+		Quaternion get_orientation(int device_id);
+		void enable_motion_sensor(bool enabled, int device_id);
+		void reset_gyro_orientation(int device_id);
 	private:
 		static DualSenseManager *singleton;
 

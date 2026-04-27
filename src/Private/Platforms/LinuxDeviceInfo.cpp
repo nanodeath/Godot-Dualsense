@@ -83,10 +83,20 @@ void FLinuxDeviceInfo::ProcessAudioHapitc(FDeviceContext* Context)
 		return;
 	}
 
+	// Audio-haptic reports are Bluetooth-only by design. The 142-byte report
+	// carries a CRC32 in its trailing four bytes, which GamepadOutput::
+	// SendAudioHapticAdvanced only computes for the BT path. On USB the
+	// kernel hid-playstation driver also contests parts of the output channel.
+	// Mirrors the Windows guard at WindowsDeviceInfo.cpp:253.
+	if (Context->ConnectionType != EDSDeviceConnection::Bluetooth)
+	{
+		return;
+	}
+
 	hid_device* DeviceHandle = static_cast<hid_device*>(Context->Handle);
 
 	constexpr size_t Report = SonyHIDProtocol::AUDIO_HAPTICS_OUTPUT_LEN;
-	int BytesWritten = hid_write(DeviceHandle, Context->BufferAudio, Report);
+	const int BytesWritten = hid_write(DeviceHandle, Context->BufferAudio, Report);
 	(void)BytesWritten;
 }
 

@@ -96,7 +96,7 @@ void FLinuxDeviceInfo::ProcessAudioHapitc(FDeviceContext* Context)
 	hid_device* DeviceHandle = static_cast<hid_device*>(Context->Handle);
 
 	constexpr size_t Report = SonyHIDProtocol::AUDIO_HAPTICS_OUTPUT_LEN;
-	const int BytesWritten = hid_write(DeviceHandle, Context->BufferAudio, Report);
+	const int BytesWritten = hid_write(DeviceHandle, Context->BufferHapitcs, Report);
 	(void)BytesWritten;
 }
 
@@ -137,7 +137,7 @@ void FLinuxDeviceInfo::Write(FDeviceContext* Context)
 	                                      ? SonyHIDProtocol::BLUETOOTH_OUTPUT_LEN
 	                                      : InReportLength;
 
-	int BytesWritten = hid_write(DeviceHandle, Context->BufferOutput, OutputReportLength);
+	int BytesWritten = hid_write(DeviceHandle, Context->GetRawOutputBuffer(), OutputReportLength);
 	if (BytesWritten < 0)
 	{
 		InvalidateHandle(Context);
@@ -235,8 +235,10 @@ void FLinuxDeviceInfo::InvalidateHandle(FDeviceContext* Context)
 		Context->Path.clear();
 		std::memset(Context->Buffer, 0, sizeof(Context->Buffer));
 		std::memset(Context->BufferDS4, 0, sizeof(Context->BufferDS4));
-		std::memset(Context->BufferOutput, 0, sizeof(Context->BufferOutput));
-		std::memset(Context->BufferAudio, 0, sizeof(Context->BufferAudio));
+		// BufferOutput is 78 bytes (private member; size matches GamepadCore's
+		// FDeviceContext::BufferOutput[78] declaration).
+		std::memset(Context->GetRawOutputBuffer(), 0, 78);
+		std::memset(Context->BufferHapitcs, 0, sizeof(Context->BufferHapitcs));
 	}
 }
 

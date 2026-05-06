@@ -36,8 +36,10 @@ namespace SonyHIDProtocol
 	constexpr std::size_t DUALSENSE_USB_OUTPUT_LEN = 74;
 	constexpr std::size_t BLUETOOTH_OUTPUT_LEN = 78;             // DualSense over BT
 
-	// Audio-haptics output buffer (DualSense only).
-	constexpr std::size_t AUDIO_HAPTICS_OUTPUT_LEN = 142;
+	// Audio-haptics output buffer (DualSense only). Upstream's BT path emits
+	// report 0x36 with payload bytes 0..393 + 4-byte CRC at 394..397 = 398
+	// total. Anything shorter and the controller rejects the write.
+	constexpr std::size_t AUDIO_HAPTICS_OUTPUT_LEN = 398;
 
 	// Calibration feature report — returns gyro/accel offsets.
 	constexpr std::uint8_t CALIBRATION_FEATURE_ID = 0x05;

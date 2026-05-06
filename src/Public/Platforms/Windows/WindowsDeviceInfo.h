@@ -14,10 +14,10 @@
 #endif
 
 #include "GCore/Types/DSCoreTypes.h"
-#include "GCore/Interfaces/IPlatformHardwareInfo.h"
+#include "GCore/Interfaces/IPlatformHardware.h"
 #include "GCore/Types/Structs/Context/DeviceContext.h"
 
-#include "GCore/Interfaces/IPlatformHardwareInfo.h"
+#include "GCore/Interfaces/IPlatformHardware.h"
 #include "GCore/Types/DSCoreTypes.h"
 #include "GCore/Types/Structs/Context/DeviceContext.h"
 

@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "GCore/Interfaces/Segregations/IGamepadBase.h"
 #include "GCore/Templates/TBasicDeviceRegistry.h"
 #include "GodotRegistryPolicy.h"
 
@@ -27,7 +28,7 @@ public:
         }
     }
 
-    static ISonyGamepad* GetGamepad(int32_t DeviceId)
+    static IGamepadBase* GetGamepad(int32_t DeviceId)
     {
         if (RegistryInstance)
         {
@@ -38,12 +39,9 @@ public:
 
     static IGamepadTrigger* GetTriggerGamepad(int32_t DeviceId)
     {
-        if (RegistryInstance)
+        if (IGamepadBase* Gamepad = GetGamepad(DeviceId))
         {
-            ISonyGamepad* Gamepad = GetGamepad( DeviceId);
-            if (Gamepad) {
-                return Gamepad->GetIGamepadTrigger();
-            }
+            return Gamepad->GetIGamepadTrigger();
         }
         return nullptr;
     }

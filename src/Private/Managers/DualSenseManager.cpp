@@ -7,7 +7,10 @@
 #include <godot_cpp/classes/engine.hpp>
 #include "Adapter/GodotDeviceRegistry.h"
 #include "API/GamepadDefs.h"
-#include "GCore/Interfaces/Segregations/IGamepadAudioHaptics.h"
+#include "GCore/Interfaces/Segregations/IGamepadHaptics.h"
+#include "GCore/Interfaces/Segregations/IGamepadLightbar.h"
+#include "GCore/Interfaces/Segregations/IGamepadRumbles.h"
+#include "GCore/Interfaces/Segregations/IGamepadSensors.h"
 #include "GImplementations/Libraries/DualSense/DualSenseLibrary.h"
 #ifdef _WIN32
 #include "Platforms/Windows/WindowsHardwarePolicy.h"
@@ -15,7 +18,7 @@
 #ifdef __unix__
 #include "Platforms/Linux/LinuxHardwarePolicy.h"
 #endif
-#include "GCore/Interfaces/IPlatformHardwareInfo.h"
+#include "GCore/Interfaces/IPlatformHardware.h"
 
 using namespace godot;
 
@@ -36,11 +39,11 @@ void DualSenseManager::_ready() {
 
     // 1.Hardware
 #ifdef _WIN32
-    std::unique_ptr<IPlatformHardwareInfo> WindowsInstance = std::make_unique<FWindowsPlatform::FWindowsHardware>();
-    IPlatformHardwareInfo::SetInstance(std::move(WindowsInstance));
+    std::unique_ptr<IPlatformHardware> WindowsInstance = std::make_unique<FWindowsPlatform::FWindowsHardware>();
+    IPlatformHardware::SetInstance(std::move(WindowsInstance));
 #elif defined(__unix__)
-    std::unique_ptr<IPlatformHardwareInfo> LinuxInstance = std::make_unique<FLinuxPlatform::FLinuxHardware>();
-    IPlatformHardwareInfo::SetInstance(std::move(LinuxInstance));
+    std::unique_ptr<IPlatformHardware> LinuxInstance = std::make_unique<FLinuxPlatform::FLinuxHardware>();
+    IPlatformHardware::SetInstance(std::move(LinuxInstance));
 #endif
 
     FGodotDeviceRegistry::Initialize();
@@ -99,14 +102,10 @@ void DualSenseManager::haptic_enqueue(std::vector<std::uint8_t>&& data, int devi
 void DualSenseManager::haptic_process_job(const HapticJob &job) {
     const auto gamepad = FGodotDeviceRegistry::GetGamepad(job.device_id);
     if (!gamepad) return;
-    IGamepadAudioHaptics *haptics = gamepad->GetIGamepadHaptics();
+    IGamepadHaptics *haptics = gamepad->GetIGamepadHaptics();
     if (!haptics) return;
     const int64_t total = static_cast<int64_t>(job.data.size());
     if (total <= 0) return;
-
-    if (auto *ds = dynamic_cast<FDualSenseLibrary*>(gamepad)) {
-        ds->EnableAudioHaptic();
-    }
 
     constexpr int64_t CHUNK = 64;
     constexpr int64_t MIN_CHUNKS = 20;  // see set_audio_haptic comment
@@ -138,7 +137,6 @@ void DualSenseManager::_bind_methods() {
     ClassDB::bind_method(D_METHOD("set_audio_haptic_streaming", "data", "device_id"), &DualSenseManager::set_audio_haptic_streaming, DEFVAL(1));
     ClassDB::bind_method(D_METHOD("get_gyro", "device_id"), &DualSenseManager::get_gyro, DEFVAL(1));
     ClassDB::bind_method(D_METHOD("get_accel", "device_id"), &DualSenseManager::get_accel, DEFVAL(1));
-    ClassDB::bind_method(D_METHOD("get_orientation", "device_id"), &DualSenseManager::get_orientation, DEFVAL(1));
     ClassDB::bind_method(D_METHOD("enable_motion_sensor", "enabled", "device_id"), &DualSenseManager::enable_motion_sensor, DEFVAL(1));
     ClassDB::bind_method(D_METHOD("reset_gyro_orientation", "device_id"), &DualSenseManager::reset_gyro_orientation, DEFVAL(1));
 }
@@ -155,19 +153,23 @@ static EDSGamepadHand to_hand(int hand) {
 
 void DualSenseManager::set_rumble(int left, int right, int device_id) {
     if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
-        gamepad->SetVibration(clamp_byte(left), clamp_byte(right));
+        if (auto *rumbles = gamepad->GetIGamepadRumbles()) {
+            rumbles->SetVibration(clamp_byte(left), clamp_byte(right));
+        }
     }
 }
 
 void DualSenseManager::set_lightbar(Color color, int device_id) {
     if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
-        DSCoreTypes::FDSColor c{
-            clamp_byte(static_cast<int>(color.r * 255.0f)),
-            clamp_byte(static_cast<int>(color.g * 255.0f)),
-            clamp_byte(static_cast<int>(color.b * 255.0f)),
-            1
-        };
-        gamepad->SetLightbar(c);
+        if (auto *lightbar = gamepad->GetIGamepadLightbar()) {
+            DSCoreTypes::FDSColor c{
+                clamp_byte(static_cast<int>(color.r * 255.0f)),
+                clamp_byte(static_cast<int>(color.g * 255.0f)),
+                clamp_byte(static_cast<int>(color.b * 255.0f)),
+                1
+            };
+            lightbar->SetLightbar(c);
+        }
     }
 }
 
@@ -215,44 +217,46 @@ void DualSenseManager::set_audio_haptic_streaming(const PackedByteArray &data, i
 
 Vector3 DualSenseManager::get_gyro(int device_id) {
     if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
-        const auto v = gamepad->GetGyro();
-        return Vector3(v.X, v.Y, v.Z);
+        if (auto *sensors = gamepad->GetIGamepadSensors()) {
+            const auto v = sensors->GetGyro();
+            return Vector3(v.X, v.Y, v.Z);
+        }
     }
     return Vector3();
 }
 
 Vector3 DualSenseManager::get_accel(int device_id) {
     if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
-        const auto v = gamepad->GetAccel();
-        return Vector3(v.X, v.Y, v.Z);
+        if (auto *sensors = gamepad->GetIGamepadSensors()) {
+            const auto v = sensors->GetAccel();
+            return Vector3(v.X, v.Y, v.Z);
+        }
     }
     return Vector3();
 }
 
-Quaternion DualSenseManager::get_orientation(int device_id) {
-    if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
-        const auto q = gamepad->GetOrientation();
-        return Quaternion(q.X, q.Y, q.Z, q.W);
-    }
-    return Quaternion();
-}
-
 void DualSenseManager::enable_motion_sensor(bool enabled, int device_id) {
     if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
-        gamepad->EnableMotionSensor(enabled);
+        if (auto *sensors = gamepad->GetIGamepadSensors()) {
+            sensors->EnableMotionSensor(enabled);
+        }
     }
 }
 
 void DualSenseManager::reset_gyro_orientation(int device_id) {
     if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(device_id)) {
-        gamepad->ResetGyroOrientation();
+        if (auto *sensors = gamepad->GetIGamepadSensors()) {
+            sensors->ResetGyroOrientation();
+        }
     }
 }
 
 void DualSenseManager::test_rumble() {
     if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(1)) {
         UtilityFunctions::print("test_rumble vibration...");
-        gamepad->SetVibration(255, 255);
+        if (auto *rumbles = gamepad->GetIGamepadRumbles()) {
+            rumbles->SetVibration(255, 255);
+        }
     } else {
         UtilityFunctions::print("Not found gamepad");
     }
@@ -260,7 +264,9 @@ void DualSenseManager::test_rumble() {
 
 void DualSenseManager::test_lightbar() {
     if (const auto gamepad = FGodotDeviceRegistry::GetGamepad(1)) {
-        gamepad->SetLightbar({255, 0, 0, 0});
+        if (auto *lightbar = gamepad->GetIGamepadLightbar()) {
+            lightbar->SetLightbar({255, 0, 0, 0});
+        }
     } else {
         UtilityFunctions::print("Not found gamepad");
     }

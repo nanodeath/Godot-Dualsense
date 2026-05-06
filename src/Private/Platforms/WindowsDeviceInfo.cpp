@@ -153,7 +153,7 @@ void FWindowsDeviceInfo::Write(FDeviceContext* Context)
 	                                : InReportLength;
 
 	DWORD BytesWritten = 0;
-	if (!WriteFile(Context->Handle, Context->BufferOutput, OutputReportLength, &BytesWritten, nullptr))
+	if (!WriteFile(Context->Handle, Context->GetRawOutputBuffer(), OutputReportLength, &BytesWritten, nullptr))
 	{
 	}
 }
@@ -191,8 +191,10 @@ void FWindowsDeviceInfo::InvalidateHandle(FDeviceContext* Context)
 		Context->IsConnected = false;
 		Context->Path.clear();
 
-		ZeroMemory(Context->BufferOutput, sizeof(Context->BufferOutput));
-		ZeroMemory(Context->BufferAudio, sizeof(Context->BufferAudio));
+		// BufferOutput is 78 bytes (private member; size matches GamepadCore's
+		// FDeviceContext::BufferOutput[78] declaration).
+		ZeroMemory(Context->GetRawOutputBuffer(), 78);
+		ZeroMemory(Context->BufferHapitcs, sizeof(Context->BufferHapitcs));
 		ZeroMemory(Context->Buffer, sizeof(Context->Buffer));
 		ZeroMemory(Context->BufferDS4, sizeof(Context->BufferDS4));
 	}
@@ -257,7 +259,7 @@ void FWindowsDeviceInfo::ProcessAudioHapitc(FDeviceContext* Context)
 
 	unsigned long BytesWritten = 0;
 	constexpr size_t BufferSize = SonyHIDProtocol::AUDIO_HAPTICS_OUTPUT_LEN;
-	if (!WriteFile(Context->Handle, Context->BufferAudio, BufferSize, &BytesWritten, nullptr))
+	if (!WriteFile(Context->Handle, Context->BufferHapitcs, BufferSize, &BytesWritten, nullptr))
 	{
 		const unsigned long Error = GetLastError();
 		if (Error != ERROR_IO_PENDING)

@@ -35,9 +35,16 @@ elif env["platform"] == "linux":
 # --- Busca Recursiva de Fontes ---
 sources = []
 for root, dirs, files in os.walk("src"):
-    # Skip the GamepadCore Examples/ directory entirely — it's reference code,
-    # not part of the build. Platform-specific code lives in src/{Public,Private}/Platforms/.
-    if "Examples" in root.split(os.sep):
+    # Skip the GamepadCore Examples/ and Tests/ directories entirely — both are
+    # reference code, not part of the shipped binary. Platform-specific
+    # production code lives in src/{Public,Private}/Platforms/.
+    #
+    # Tests/ in particular ships a Tests/Common/Platform/windows/ subtree
+    # whose lowercase "windows" segment does not match the case-sensitive
+    # platform-name substring filter below, so without this exclusion those
+    # test sources would be compiled into the addon's .so on every platform.
+    parts = root.split(os.sep)
+    if "Examples" in parts or "Tests" in parts:
         continue
     for file in files:
         if file.endswith(".cpp"):
